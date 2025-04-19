@@ -9,10 +9,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from streamlit_autorefresh import st_autorefresh
 
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
+nltk.download('punkt')
 
 
 # Download required NLTK resources
