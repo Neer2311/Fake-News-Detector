@@ -68,41 +68,40 @@ def clean_text(content):
     content = [word for word in content if word not in stopwords.words('english')]
     return ' '.join(content)
 
-class GoogleFactChecker:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.base_url = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
-        self.cache = {}  # Cache to store previous results
-        self.cache_expiry = 3600  # Cache expiry in seconds (1 hour)
-    
-    def extract_key_claims(self, article_text):
-        """Extract the most important claims from an article for fact checking"""
-        # Split text into sentences using the safe tokenizer
-        sentences = safe_sent_tokenize(article_text)
-        
-     
-        key_sentences = []
-        claim_indicators = ["claim", "said", "says", "according to", "stated", "reported", 
-                           "confirmed", "announced", "revealed", "alleged", "suggests"]
-        
-        # Always include the first 2 sentences (often contain the main claim)
-        key_sentences.extend(sentences[:min(2, len(sentences))])
-        
-    
-        for sentence in sentences[2:]:
-            if any(indicator in sentence.lower() for indicator in claim_indicators):
-                key_sentences.append(sentence)
-        
-       
-        if len(key_sentences) > 3:
-           
-            key_sentences = key_sentences[:3]
-        elif len(key_sentences) == 0 and sentences:
-           
-            key_sentences = [sentences[0]]
-        
-        return key_sentences
-    
+import requests
+
+def check_fact_with_google_fact_check_api(user_input):
+    api_key = "YOUR_API_KEY"
+    endpoint = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
+
+    # 🧠 Truncate the input to improve matching accuracy
+    query = user_input.strip()[:100]
+
+    params = {
+        "query": query,
+        "key": api_key
+    }
+
+    response = requests.get(endpoint, params=params)
+    data = response.json()
+
+    claims = data.get("claims", [])
+
+    if not claims:
+        google_search = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        return {
+            "title": "⚠️ No fact-checks found",
+            "body": f"No fact-checks were found for this claim. Try [searching on Google]({google_search})."
+        }
+    else:
+        claim = claims[0]
+        review = claim.get("claimReview", [{}])[0]
+        return {
+            "title": review.get("title", "Fact Check"),
+            "body": review.get("text", "No details available."),
+            "url": review.get("url", "")
+        }
+
     def clean_query(self, query):
         """Clean and prepare a query for the fact check API"""
     
