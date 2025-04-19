@@ -9,24 +9,44 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from streamlit_autorefresh import st_autorefresh
 
-nltk.download('punkt')
 
-# Ensure punkt tokenizer is available
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-
-
-
-# Download required NLTK resources
-nltk.download('stopwords', quiet=True)
-nltk.download('punkt', quiet=True)
-
-# Page config
 st.set_page_config(page_title="📰 Fake News Detector", layout="wide")
 
-# Load model and vectorizer
+
+@st.cache_resource
+def download_nltk_resources():
+    try:
+     
+        nltk.download('stopwords', quiet=True)
+        nltk.download('punkt', quiet=True)
+        
+        try:
+            nltk.data.find('tokenizers/punkt')
+            return True
+        except LookupError:
+        
+            nltk.download('punkt', download_dir='./.nltk_data')
+            nltk.data.path.append('./.nltk_data')
+            return True
+    except Exception as e:
+        st.error(f"Failed to download NLTK resources: {str(e)}")
+        return False
+
+
+resources_available = download_nltk_resources()
+
+
+def safe_sent_tokenize(text):
+    if resources_available:
+        try:
+            return sent_tokenize(text)
+        except LookupError:
+            
+            return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+    else:
+        
+        return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+
 @st.cache_resource
 def load_model():
     with open('model.pkl', 'rb') as f:
@@ -40,7 +60,7 @@ def load_vectorizer():
 model = load_model()
 vectorizer = load_vectorizer()
 
-# Clean input for model
+
 def clean_text(content):
     content = re.sub('[^a-zA-Z]', ' ', content)
     content = content.lower()
@@ -48,7 +68,6 @@ def clean_text(content):
     content = [word for word in content if word not in stopwords.words('english')]
     return ' '.join(content)
 
-# Google Fact Checker Class
 class GoogleFactChecker:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -58,12 +77,10 @@ class GoogleFactChecker:
     
     def extract_key_claims(self, article_text):
         """Extract the most important claims from an article for fact checking"""
-        # Split text into sentences
-        sentences = sent_tokenize(article_text)
+        # Split text into sentences using the safe tokenizer
+        sentences = safe_sent_tokenize(article_text)
         
-        # If there are too many sentences, focus on:
-        # 1. First few sentences (usually contain the main claim)
-        # 2. Sentences with potential claims (containing specific keywords)
+     
         key_sentences = []
         claim_indicators = ["claim", "said", "says", "according to", "stated", "reported", 
                            "confirmed", "announced", "revealed", "alleged", "suggests"]
@@ -71,32 +88,31 @@ class GoogleFactChecker:
         # Always include the first 2 sentences (often contain the main claim)
         key_sentences.extend(sentences[:min(2, len(sentences))])
         
-        # Add sentences with claim indicators
+    
         for sentence in sentences[2:]:
             if any(indicator in sentence.lower() for indicator in claim_indicators):
                 key_sentences.append(sentence)
         
-        # If we have too many or too few sentences, adjust
+       
         if len(key_sentences) > 3:
-            # Prioritize sentences with claim indicators
+           
             key_sentences = key_sentences[:3]
         elif len(key_sentences) == 0 and sentences:
-            # If no key sentences identified, use the first sentence
+           
             key_sentences = [sentences[0]]
         
         return key_sentences
     
     def clean_query(self, query):
         """Clean and prepare a query for the fact check API"""
-        # Remove special characters but keep basic punctuation
+    
         query = re.sub(r'[^\w\s.,!?"\']', ' ', query)
         
-        # Trim whitespace and ensure proper length
         query = query.strip()
         
-        # API has query length limitations - ensure it's not too long
+     
         if len(query) > 150:
-            # Truncate but try to keep complete sentences
+            
             words = query.split()
             query = ' '.join(words[:20])  # Keep first ~20 words
         
@@ -112,13 +128,13 @@ class GoogleFactChecker:
     
     def fact_check_claim(self, claim):
         """Check a single claim using Google Fact Check API"""
-        # First check cache
+   
         cleaned_claim = self.clean_query(claim)
         cached_result = self.check_cache(cleaned_claim)
         if cached_result:
             return cached_result
         
-        # Prepare the API request
+        
         url = f"{self.base_url}?query={quote_plus(cleaned_claim)}&key={self.api_key}"
         
         try:
@@ -142,15 +158,15 @@ class GoogleFactChecker:
                         }
                         results.append(result)
                     
-                    # Cache the results
+         
                     self.cache[cleaned_claim] = (time.time(), results)
                     return results
                 else:
-                    # No claims found, but request was successful
+                  
                     self.cache[cleaned_claim] = (time.time(), [])
                     return []
             else:
-                # Handle API error
+              
                 st.warning(f"Fact check API returned status code {response.status_code}")
                 return []
                 
@@ -160,14 +176,14 @@ class GoogleFactChecker:
     
     def fact_check_article(self, article_text):
         """Extract claims from article and check them"""
-        # Extract key claims/sentences
+       
         key_claims = self.extract_key_claims(article_text)
         
-        # Check each claim
+       
         all_results = []
         for claim in key_claims:
             results = self.fact_check_claim(claim)
-            if results:  # Only add if we found fact checks
+            if results: 
                 all_results.extend(results)
         
         return all_results
@@ -177,7 +193,7 @@ class GoogleFactChecker:
         if not fact_check_results:
             return None  # No fact checks found
         
-        # Define rating categories and their score impacts
+        
         rating_impacts = {
             "true": 1.0,
             "mostly true": 0.8,
@@ -185,10 +201,10 @@ class GoogleFactChecker:
             "mixed": 0.5,
             "mostly false": 0.2,
             "false": 0.0,
-            "pants on fire": -0.5,  # Extra penalty for egregious falsehoods
+            "pants on fire": -0.5, 
         }
         
-        # Calculate score based on ratings
+        
         total_score = 0
         count = 0
         
