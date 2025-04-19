@@ -11,6 +11,13 @@ from streamlit_autorefresh import st_autorefresh
 
 nltk.download('punkt')
 
+# Ensure punkt tokenizer is available
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+
+
 
 # Download required NLTK resources
 nltk.download('stopwords', quiet=True)
