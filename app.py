@@ -9,9 +9,19 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from streamlit_autorefresh import st_autorefresh
 
-# Download required NLTK resources
-nltk.download('stopwords', quiet=True)
-nltk.download('punkt', quiet=True)
+#required NLTK resources
+import os
+nltk_path = os.path.join(os.path.expanduser("~"), "nltk_data")
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', download_dir=nltk_path)
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', download_dir=nltk_path)
 
 # Page config
 st.set_page_config(page_title="📰 Fake News Detector", layout="wide")
