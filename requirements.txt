@@ -1,6 +1,6 @@
 streamlit
-scikit-learn
+scikit-learn==1.3.2
 pandas
-nltk
-requests
+nltk==3.8.1 
+requests==2.31.0
 streamlit-autorefresh
