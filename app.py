@@ -232,14 +232,79 @@ def initialize_fact_checker():
 
 fact_checker = initialize_fact_checker()
 
-# Fetch news
-API_KEY = "ac985774b8bb448fbd720422fd53b8fc"
+# Fetch news with improved error handling and fallbacks
+API_KEY = "ac985774b8bb448fbd720422fd53b8fc"  # Consider storing this in Streamlit secrets
+
+@st.cache_data(ttl=300)  # Cache results for 5 minutes
 def fetch_news():
+    """Fetch news with improved error handling and fallbacks"""
     url = f"https://newsapi.org/v2/everything?q=india&language=en&pageSize=5&sortBy=publishedAt&apiKey={API_KEY}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json().get("articles", [])
-    return []
+    
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if "articles" in data and len(data["articles"]) > 0:
+                return data["articles"]
+            else:
+                st.warning("NewsAPI returned no articles. Using fallback news.")
+                return get_fallback_news()
+        else:
+            st.warning(f"NewsAPI returned status code: {response.status_code}")
+            # Only log detailed error in development
+            if not st.secrets.get("production", False):
+                st.error(f"Error details: {response.text}")
+            return get_fallback_news()
+    except Exception as e:
+        st.warning(f"Error fetching news: {str(e)}")
+        return get_fallback_news()
+
+def get_fallback_news():
+    """Provide fallback news when API fails"""
+    return [
+        {
+            "title": "AI Technologies Reshaping Healthcare Industry with New Diagnostic Tools",
+            "source": {"name": "Tech Today"},
+            "url": "https://example.com/news1",
+            "publishedAt": "2025-04-24T12:00:00Z",
+            "content": "AI technologies continue to transform healthcare with new diagnostic tools..."
+        },
+        {
+            "title": "Economic Indicators Show Strong Recovery in Manufacturing Sector",
+            "source": {"name": "Business Daily"},
+            "url": "https://example.com/news2",
+            "publishedAt": "2025-04-24T10:30:00Z",
+            "content": "Recent economic indicators suggest a strong recovery in the manufacturing sector..."
+        },
+        {
+            "title": "Climate Change Initiatives Gain International Support at Global Summit",
+            "source": {"name": "World Report"},
+            "url": "https://example.com/news3",
+            "publishedAt": "2025-04-23T22:15:00Z",
+            "content": "Global leaders agreed to new climate initiatives during the recent summit..."
+        },
+        {
+            "title": "New Education Policies Aim to Bridge Digital Divide Among Students",
+            "source": {"name": "Education Weekly"},
+            "url": "https://example.com/news4",
+            "publishedAt": "2025-04-23T18:45:00Z",
+            "content": "Government announces new policies to ensure all students have access to digital learning tools..."
+        },
+        {
+            "title": "Space Exploration: Next Generation Telescope Reveals New Exoplanets",
+            "source": {"name": "Science Today"},
+            "url": "https://example.com/news5",
+            "publishedAt": "2025-04-22T14:20:00Z",
+            "content": "Astronomers discover potentially habitable exoplanets using the new orbital telescope..."
+        }
+    ]
+
+# Create a function to attempt alternative news sources if primary fails
+def try_alternative_news_source():
+    """Try an alternative news source if NewsAPI fails"""
+    # This is a placeholder - you might want to implement an actual alternative API
+    # For now, we'll just return the fallback news
+    return get_fallback_news()
 
 # ---------- Custom CSS ----------
 st.markdown("""
@@ -334,6 +399,21 @@ st.markdown("""
         border-radius: 4px;
         background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
     }
+
+    .api-status {
+        font-size: 0.8rem;
+        color: #6b7280;
+        text-align: right;
+        margin-bottom: 0.5rem;
+    }
+
+    .fallback-notice {
+        padding: 0.5rem;
+        background-color: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -345,6 +425,31 @@ with st.sidebar:
     st.markdown("---")
     st.write("🌐 Powered by NewsAPI.org and Google Fact Check Tools")
     st.markdown("🛠️ Built with Python, Streamlit, Scikit-learn")
+    
+    # Add API status indicator in sidebar
+    st.markdown("### API Status")
+    
+    # Check if NewsAPI is working
+    try:
+        test_url = f"https://newsapi.org/v2/top-headlines?country=us&pageSize=1&apiKey={API_KEY}"
+        response = requests.get(test_url, timeout=5)
+        if response.status_code == 200:
+            st.success("✅ NewsAPI: Online")
+        else:
+            st.error("❌ NewsAPI: Offline (using fallback data)")
+    except:
+        st.error("❌ NewsAPI: Offline (using fallback data)")
+    
+    # Check if Google Fact Check API is working
+    try:
+        test_url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query=climate&key={fact_checker.api_key}"
+        response = requests.get(test_url, timeout=5)
+        if response.status_code == 200:
+            st.success("✅ Google Fact Check: Online")
+        else:
+            st.warning("⚠️ Google Fact Check: Issues detected")
+    except:
+        st.warning("⚠️ Google Fact Check: Issues detected")
 
 # ---------- 🧠 Title & Input ----------
 st.markdown("## 📰 Fake News Detection System")
@@ -453,60 +558,62 @@ refresh_interval = st.slider("⏱ Refresh Interval (seconds)", 0, 60, 30)
 if refresh_interval > 0:
     st_autorefresh(interval=refresh_interval * 1000, key="auto-refresh")
 
+# Try to fetch news with fallbacks
 articles = fetch_news()
-if not articles:
-    st.error("⚠️ Could not fetch news. Please check your API key or try again later.")
-else:
-    for article in articles:
-        title = article.get("title", "No Title")
-        source = article.get("source", {}).get("name", "Unknown Source")
-        url = article.get("url", "")
-        published_at = article.get("publishedAt", "Unknown Time")
 
-        st.markdown(f"""
-            <div class="news-card">
-                <div class="headline">{title}</div>
-                <div><strong>Source:</strong> {source} | <strong>Published at:</strong> {published_at}</div>
-                <div><a href="{url}" target="_blank">🔗 Read Full Article</a></div>
-            </div>
-        """, unsafe_allow_html=True)
+# Check if we're using fallback data
+is_fallback = len([a for a in articles if a.get("url", "").startswith("https://example.com")]) > 0
 
-        # Use the enhanced fact checker for live news too
-        with st.spinner("Analyzing..."):
-            # Model prediction
-            preprocessed = clean_text(title)
-            vectorized = vectorizer.transform([preprocessed])
-            pred = model.predict(vectorized)
-            prob = model.predict_proba(vectorized).max()
+if is_fallback:
+    st.markdown("<div class='fallback-notice'>⚠️ Using sample news data. API connection unavailable.</div>", unsafe_allow_html=True)
 
-            # Quick fact check (just the title)
-            fact_results = fact_checker.fact_check_claim(title)
-            fact_score = fact_checker.get_credibility_score(fact_results)
+# Display articles (whether from API or fallback)
+for article in articles:
+    title = article.get("title", "No Title")
+    source = article.get("source", {}).get("name", "Unknown Source")
+    url = article.get("url", "")
+    published_at = article.get("publishedAt", "Unknown Time")
 
-        # Show quick analysis
-        col1, col2 = st.columns(2)
+    st.markdown(f"""
+        <div class="news-card">
+            <div class="headline">{title}</div>
+            <div><strong>Source:</strong> {source} | <strong>Published at:</strong> {published_at}</div>
+            <div><a href="{url}" target="_blank">🔗 Read Full Article</a></div>
+        </div>
+    """, unsafe_allow_html=True)
 
-        with col1:
-            label = "Fake" if pred[0] == 1 else "Real"
-            emoji = "🚨" if label == "Fake" else "✅"
-            st.write(f"**AI Model:** {emoji} {label} ({prob*100:.0f}% confidence)")
+    # Analyze headline with fact checker and model
+    with st.spinner("Analyzing..."):
+        # Model prediction
+        preprocessed = clean_text(title)
+        vectorized = vectorizer.transform([preprocessed])
+        pred = model.predict(vectorized)
+        prob = model.predict_proba(vectorized).max()
 
-        with col2:
-            if fact_score is not None:
-                if fact_score >= 0.7:
-                    st.write("**Fact Check:** ✅ Verified True")
-                elif fact_score >= 0.4:
-                    st.write("**Fact Check:** ⚠️ Mixed Claims")
-                else:
-                    st.write("**Fact Check:** ❌ Contains False Claims")
+        # Quick fact check (just the title)
+        fact_results = fact_checker.fact_check_claim(title)
+        fact_score = fact_checker.get_credibility_score(fact_results)
+
+    # Show quick analysis
+    col1, col2 = st.columns(2)
+
+    with col1:
+        label = "Fake" if pred[0] == 1 else "Real"
+        emoji = "🚨" if label == "Fake" else "✅"
+        st.write(f"**AI Model:** {emoji} {label} ({prob*100:.0f}% confidence)")
+
+    with col2:
+        if fact_score is not None:
+            if fact_score >= 0.7:
+                st.write("**Fact Check:** ✅ Verified True")
+            elif fact_score >= 0.4:
+                st.write("**Fact Check:** ⚠️ Mixed Claims")
             else:
-                st.write("**Fact Check:** ⚙️ No fact checks found")
+                st.write("**Fact Check:** ❌ Contains False Claims")
+        else:
+            st.write("**Fact Check:** ⚙️ No fact checks found")
 
-        # Add link to full article
-        if article.get("url"):
-            st.markdown(f"[Read full article]({article.get('url')})")
+# Footer
+st.markdown("___")
+st.markdown("<div class='footer'>© 2025 Fake News Detection System</div>", unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("___")
-    st.markdown("<div class='footer'>© 2025 Fake News Detection System</div>", unsafe_allow_html=True)
