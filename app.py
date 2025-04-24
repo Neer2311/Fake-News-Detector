@@ -463,35 +463,34 @@ else:
         url = article.get("url", "")
         published_at = article.get("publishedAt", "Unknown Time")
 
-    st.markdown(f"""
-        <div class="news-card">
-            <div class="headline">{title}</div>
-            <div><strong>Source:</strong> {source} | <strong>Published at:</strong> {published_at}</div>
-            <div><a href="{url}" target="_blank">🔗 Read Full Article</a></div>
-        </div>
-    """, unsafe_allow_html=True)
-
+        st.markdown(f"""
+            <div class="news-card">
+                <div class="headline">{title}</div>
+                <div><strong>Source:</strong> {source} | <strong>Published at:</strong> {published_at}</div>
+                <div><a href="{url}" target="_blank">🔗 Read Full Article</a></div>
+            </div>
+        """, unsafe_allow_html=True)
 
         # Use the enhanced fact checker for live news too
-            with st.spinner("Analyzing..."):
+        with st.spinner("Analyzing..."):
             # Model prediction
             preprocessed = clean_text(title)
             vectorized = vectorizer.transform([preprocessed])
             pred = model.predict(vectorized)
             prob = model.predict_proba(vectorized).max()
-            
+
             # Quick fact check (just the title)
             fact_results = fact_checker.fact_check_claim(title)
             fact_score = fact_checker.get_credibility_score(fact_results)
-        
+
         # Show quick analysis
         col1, col2 = st.columns(2)
-        
+
         with col1:
             label = "Fake" if pred[0] == 1 else "Real"
             emoji = "🚨" if label == "Fake" else "✅"
             st.write(f"**AI Model:** {emoji} {label} ({prob*100:.0f}% confidence)")
-        
+
         with col2:
             if fact_score is not None:
                 if fact_score >= 0.7:
@@ -502,12 +501,12 @@ else:
                     st.write("**Fact Check:** ❌ Contains False Claims")
             else:
                 st.write("**Fact Check:** ⚙️ No fact checks found")
-                
+
         # Add link to full article
         if article.get("url"):
             st.markdown(f"[Read full article]({article.get('url')})")
-            
+
         st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("___")
-st.markdown("<div class='footer'>© 2025 Fake News Detection System</div>", unsafe_allow_html=True)
+    st.markdown("___")
+    st.markdown("<div class='footer'>© 2025 Fake News Detection System</div>", unsafe_allow_html=True)
