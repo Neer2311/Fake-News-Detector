@@ -458,8 +458,19 @@ if not articles:
     st.error("⚠️ Could not fetch news. Please check your API key or try again later.")
 else:
     for article in articles:
-        title = article.get("title", "No title available")
-        st.markdown(f"""<div class=\"news-card\"><div class=\"headline\">📾 {title}</div>""", unsafe_allow_html=True)
+    title = article.get("title", "No Title")
+    source = article.get("source", {}).get("name", "Unknown Source")
+    url = article.get("url", "")
+    published_at = article.get("publishedAt", "Unknown Time")
+
+    st.markdown(f"""
+        <div class="news-card">
+            <div class="headline">{title}</div>
+            <div><strong>Source:</strong> {source} | <strong>Published at:</strong> {published_at}</div>
+            <div><a href="{url}" target="_blank">🔗 Read Full Article</a></div>
+        </div>
+    """, unsafe_allow_html=True)
+
 
         # Use the enhanced fact checker for live news too
         with st.spinner("Analyzing..."):
