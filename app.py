@@ -473,7 +473,7 @@ else:
 
 
         # Use the enhanced fact checker for live news too
-        with st.spinner("Analyzing..."):
+            with st.spinner("Analyzing..."):
             # Model prediction
             preprocessed = clean_text(title)
             vectorized = vectorizer.transform([preprocessed])
