@@ -458,10 +458,10 @@ if not articles:
     st.error("⚠️ Could not fetch news. Please check your API key or try again later.")
 else:
     for article in articles:
-    title = article.get("title", "No Title")
-    source = article.get("source", {}).get("name", "Unknown Source")
-    url = article.get("url", "")
-    published_at = article.get("publishedAt", "Unknown Time")
+        title = article.get("title", "No Title")
+        source = article.get("source", {}).get("name", "Unknown Source")
+        url = article.get("url", "")
+        published_at = article.get("publishedAt", "Unknown Time")
 
     st.markdown(f"""
         <div class="news-card">
