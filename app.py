@@ -232,8 +232,7 @@ def initialize_fact_checker():
 
 fact_checker = initialize_fact_checker()
 
-# Fetch news with improved error handling and fallbacks
-API_KEY = "ac985774b8bb448fbd720422fd53b8fc"  # Consider storing this in Streamlit secrets
+API_KEY = "ac985774b8bb448fbd720422fd53b8fc"  
 
 @st.cache_data(ttl=300)  # Cache results for 5 minutes
 def fetch_news():
@@ -298,13 +297,6 @@ def get_fallback_news():
             "content": "Astronomers discover potentially habitable exoplanets using the new orbital telescope..."
         }
     ]
-
-# Create a function to attempt alternative news sources if primary fails
-def try_alternative_news_source():
-    """Try an alternative news source if NewsAPI fails"""
-    # This is a placeholder - you might want to implement an actual alternative API
-    # For now, we'll just return the fallback news
-    return get_fallback_news()
 
 # ---------- Custom CSS ----------
 st.markdown("""
@@ -554,7 +546,7 @@ st.markdown("---")
 st.markdown("## 🌐 Real-Time News Headlines")
 
 # ---------- 🔄 Real-Time News Stream ----------
-refresh_interval = st.slider("⏱ Refresh Interval (seconds)", 0, 60, 30)
+refresh_interval = st.slider("⏱ Refresh Interval (minutes)", 0, 60, 20)
 if refresh_interval > 0:
     st_autorefresh(interval=refresh_interval * 1000, key="auto-refresh")
 
