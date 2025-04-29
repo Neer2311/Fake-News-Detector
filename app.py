@@ -320,6 +320,7 @@ st.markdown("""
 
     .news-card {
         background-color: #ffffff;
+        font-color: #ffffff
         padding: 1.25rem;
         margin-bottom: 1rem;
         border-radius: 1rem;
